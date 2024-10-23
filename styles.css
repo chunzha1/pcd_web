@@ -69,6 +69,27 @@ body {
     color: #fff;
 }
 
+#debug-info {
+    position: absolute;
+    bottom: 80px;
+    left: 20px;
+    right: 20px;
+    z-index: 100;
+    background: rgba(0, 0, 0, 0.7);
+    padding: 10px;
+    border-radius: 8px;
+    backdrop-filter: blur(10px);
+    max-height: 200px;
+    overflow-y: auto;
+    font-family: monospace;
+    font-size: 12px;
+    color: #fff;
+}
+
+#debug-info div {
+    margin: 2px 0;
+}
+
 #controls {
     position: absolute;
     bottom: 20px;
