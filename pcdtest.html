@@ -164,6 +164,35 @@
             flex-direction: column;
             gap: 5px;
         }
+      .transform-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 4px;
+        }
+        
+        .transform-label {
+            font-size: 12px;
+            color: #fff;
+            margin-bottom: 5px;
+        }
+        
+        .transform-input {
+            width: 100%;
+            padding: 5px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+            color: white;
+            font-size: 12px;
+        }
+        
+        .transform-input:focus {
+            outline: none;
+            border-color: #2196F3;
+        }
         .setting-label {
             font-size: 12px;
             color: #fff;
@@ -247,6 +276,25 @@
                         <input type="range" id="point-opacity" class="setting-input"
                                min="0" max="1" step="0.1" value="0.8">
                     </div>
+
+                   <div class="transform-group">
+                      <div class="transform-label">Position (X, Y, Z)</div>
+                      <input type="number" id="position-x" class="transform-input" step="0.1" value="0">
+                      <input type="number" id="position-y" class="transform-input" step="0.1" value="0">
+                      <input type="number" id="position-z" class="transform-input" step="0.1" value="0">
+                  </div>
+                  <div class="transform-group">
+                      <div class="transform-label">Rotation (X, Y, Z)</div>
+                      <input type="number" id="rotation-x" class="transform-input" step="0.1" value="0">
+                      <input type="number" id="rotation-y" class="transform-input" step="0.1" value="0">
+                      <input type="number" id="rotation-z" class="transform-input" step="0.1" value="0">
+                  </div>
+                  <div class="transform-group">
+                      <div class="transform-label">Scale (X, Y, Z)</div>
+                      <input type="number" id="scale-x" class="transform-input" step="0.1" value="1">
+                      <input type="number" id="scale-y" class="transform-input" step="0.1" value="1">
+                      <input type="number" id="scale-z" class="transform-input" step="0.1" value="1">
+                  </div>
                 </div>
             </div>
         </div>
@@ -291,6 +339,13 @@ class PointCloudViewer {
         this.init();
         this.bindEvents();
         this.animate();
+
+
+        this.transformConfig = {
+            position: { x: 0, y: 0, z: 0 },
+            rotation: { x: 0, y: 0, z: 0 },
+            scale: { x: 1, y: 1, z: 1 }
+        };
     }
 
     init() {
@@ -378,9 +433,53 @@ class PointCloudViewer {
                 this.handleFileUpload({ target: { files: [files[0]] } });
             }
         });
-    }
 
-    animate() {
+        // 绑定变换控制事件
+        ['position', 'rotation', 'scale'].forEach(type => {
+            ['x', 'y', 'z'].forEach(axis => {
+                const input = document.getElementById(`${type}-${axis}`);
+                input.addEventListener('input', () => this.updateTransform());
+            });
+        });
+    }
+    updateTransform() {
+        if (!this.points) return;
+
+        try {
+            // 获取变换值
+            const position = {
+                x: parseFloat(document.getElementById('position-x').value) || 0,
+                y: parseFloat(document.getElementById('position-y').value) || 0,
+                z: parseFloat(document.getElementById('position-z').value) || 0
+            };
+
+            const rotation = {
+                x: (parseFloat(document.getElementById('rotation-x').value) || 0) * Math.PI / 180,
+                y: (parseFloat(document.getElementById('rotation-y').value) || 0) * Math.PI / 180,
+                z: (parseFloat(document.getElementById('rotation-z').value) || 0) * Math.PI / 180
+            };
+
+            const scale = {
+                x: parseFloat(document.getElementById('scale-x').value) || 1,
+                y: parseFloat(document.getElementById('scale-y').value) || 1,
+                z: parseFloat(document.getElementById('scale-z').value) || 1
+            };
+
+            // 应用变换
+            this.points.position.set(position.x, position.y, position.z);
+            this.points.rotation.set(rotation.x, rotation.y, rotation.z);
+            this.points.scale.set(scale.x, scale.y, scale.z);
+
+            // 保存变换配置
+            this.transformConfig = { position, rotation, scale };
+
+            this.debug(`Transform updated - Position(${position.x}, ${position.y}, ${position.z}), Rotation(${rotation.x}, ${rotation.y}, ${rotation.z}), Scale(${scale.x}, ${scale.y}, ${scale.z})`);
+        } catch (error) {
+            this.debug('Error updating transform: ' + error.message, 'error');
+        }
+    }
+  
+  animate() {
         requestAnimationFrame(this.animate.bind(this));
         this.controls.update();
         this.stats.update();
@@ -528,6 +627,7 @@ class PointCloudViewer {
 
         document.getElementById('point-count').textContent = positions.length / 3;
         this.resetCamera();
+        this.resetTransform(); 
     }
 
     disposePointCloud() {
@@ -591,11 +691,23 @@ class PointCloudViewer {
     }
 
     resetTransform() {
-        if (this.points) {
-            this.points.position.set(0, 0, 0);
-            this.points.rotation.set(0, 0, 0);
-            this.points.scale.set(1, 1, 1);
-        }
+        if (!this.points) return;
+
+        // 重置变换输入框
+        document.getElementById('position-x').value = '0';
+        document.getElementById('position-y').value = '0';
+        document.getElementById('position-z').value = '0';
+        document.getElementById('rotation-x').value = '0';
+        document.getElementById('rotation-y').value = '0';
+        document.getElementById('rotation-z').value = '0';
+        document.getElementById('scale-x').value = '1';
+        document.getElementById('scale-y').value = '1';
+        document.getElementById('scale-z').value = '1';
+
+        // 应用重置的变换
+        this.updateTransform();
+        
+        this.debug('Transform reset to default values');
     }
 
     onWindowResize() {
