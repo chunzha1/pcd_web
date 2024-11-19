@@ -1,0 +1,627 @@
+  <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Point Cloud Viewer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            background-color: #1a1a1a;
+            color: #ffffff;
+        }
+        #app {
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+        }
+        #viewer {
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+        #loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .loading-spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        #file-input {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 8px;
+            backdrop-filter: blur(10px);
+        }
+        .upload-btn {
+            display: inline-block;
+            padding: 8px 16px;
+            background: #4CAF50;
+            color: white;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .upload-btn:hover {
+            background: #45a049;
+        }
+        .file-info {
+            margin-top: 8px;
+            font-size: 0.8em;
+            color: #aaa;
+        }
+        #stats-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px 15px;
+            border-radius: 8px;
+            backdrop-filter: blur(10px);
+        }
+        .stat-item {
+            font-size: 14px;
+            color: #fff;
+            margin: 5px 0;
+        }
+        #debug-info {
+            position: absolute;
+            bottom: 160px;
+            left: 20px;
+            right: 20px;
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border-radius: 8px;
+            backdrop-filter: blur(10px);
+            max-height: 200px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+            color: #fff;
+        }
+        .debug-message {
+            margin: 2px 0;
+            padding: 2px 5px;
+            border-radius: 3px;
+        }
+        .debug-info { background: rgba(0, 0, 255, 0.1); }
+        .debug-error { background: rgba(255, 0, 0, 0.1); }
+        .debug-warning { background: rgba(255, 255, 0, 0.1); }
+        #controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 8px;
+            backdrop-filter: blur(10px);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            width: 90%;
+            max-width: 800px;
+        }
+        .control-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .control-btn {
+            padding: 8px 16px;
+            background: #2196F3;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .control-btn:hover {
+            background: #1976D2;
+        }
+        .control-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .settings-group {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+            width: 100%;
+        }
+        .setting-item {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        .setting-label {
+            font-size: 12px;
+            color: #fff;
+        }
+        .setting-input {
+            width: 100%;
+            padding: 5px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+            color: white;
+            font-size: 12px;
+        }
+        .setting-input:focus {
+            outline: none;
+            border-color: #2196F3;
+        }
+        #color-picker {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        #color-picker input[type="color"] {
+            width: 40px;
+            height: 25px;
+            padding: 0;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+    </style>
+    <script async src="https://unpkg.com/es-module-shims@1.8.0/dist/es-module-shims.js"></script>
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.159.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.159.0/examples/jsm/"
+        }
+    }
+    </script>
+</head>
+<body>
+    <div id="app">
+        <div id="viewer">
+            <div id="loading-overlay">
+                <div class="loading-spinner"></div>
+            </div>
+            <div id="file-input">
+                <label for="input" class="upload-btn">
+                    选择点云文件
+                    <input type="file" id="input" accept=".pcd,.xyz" style="display: none;" />
+                </label>
+                <div class="file-info">支持 .pcd, .xyz 格式</div>
+            </div>
+            <div id="stats-panel">
+                <div class="stat-item">Points: <span id="point-count">0</span></div>
+                <div class="stat-item">FPS: <span id="fps-count">0</span></div>
+                <div class="stat-item">Memory: <span id="memory-usage">0 MB</span></div>
+            </div>
+            <div id="debug-info"></div>
+            <div id="controls">
+                <div class="control-group">
+                    <button id="reset-camera" class="control-btn">重置视角</button>
+                    <button id="toggle-axes" class="control-btn">显示/隐藏坐标轴</button>
+                    <button id="reset-transform" class="control-btn">重置变换</button>
+                </div>
+                <div class="settings-group">
+                    <div class="setting-item">
+                        <div class="setting-label">Point Size</div>
+                        <input type="range" id="point-size" class="setting-input" 
+                               min="0.01" max="0.1" step="0.01" value="0.02">
+                    </div>
+                    <div class="setting-item">
+                        <div class="setting-label">Point Color</div>
+                        <div id="color-picker">
+                            <input type="color" id="point-color" value="#00ff00">
+                        </div>
+                    </div>
+                    <div class="setting-item">
+                        <div class="setting-label">Opacity</div>
+                        <input type="range" id="point-opacity" class="setting-input"
+                               min="0" max="1" step="0.1" value="0.8">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import Stats from 'three/addons/libs/stats.module.js';
+
+class PointCloudViewer {
+    constructor() {
+        // 配置
+        this.config = {
+            pointSize: 0.02,
+            pointColor: 0x00ff00,
+            pointOpacity: 0.8,
+            backgroundColor: 0x1a1a1a,
+            maxPoints: 1000000,
+            chunkSize: 100000,
+            camera: {
+                fov: 75,
+                near: 0.1,
+                far: 1000,
+                position: [5, 5, 5]
+            }
+        };
+
+        // 场景相关
+        this.scene = null;
+        this.camera = null;
+        this.renderer = null;
+        this.controls = null;
+        this.points = null;
+        this.axesHelper = null;
+        this.stats = null;
+
+        // DOM元素
+        this.container = document.getElementById('viewer');
+        this.debugElement = document.getElementById('debug-info');
+        this.loadingOverlay = document.getElementById('loading-overlay');
+
+        this.init();
+        this.bindEvents();
+        this.animate();
+    }
+
+    init() {
+        this.debug('Initializing viewer...');
+
+        // 创建场景
+        this.scene = new THREE.Scene();
+        this.scene.background = new THREE.Color(this.config.backgroundColor);
+
+        // 创建相机
+        this.camera = new THREE.PerspectiveCamera(
+            this.config.camera.fov,
+            window.innerWidth / window.innerHeight,
+            this.config.camera.near,
+            this.config.camera.far
+        );
+        this.camera.position.fromArray(this.config.camera.position);
+
+        // 创建渲染器
+        this.renderer = new THREE.WebGLRenderer({ antialias: true });
+        this.renderer.setSize(window.innerWidth, window.innerHeight);
+        this.renderer.setPixelRatio(window.devicePixelRatio);
+        this.container.appendChild(this.renderer.domElement);
+
+        // 创建控制器
+        this.controls = new OrbitControls(this.camera, this.renderer.domElement);
+        this.controls.enableDamping = true;
+        this.controls.dampingFactor = 0.05;
+        this.controls.screenSpacePanning = false;
+        this.controls.minDistance = 0.1;
+        this.controls.maxDistance = 500;
+
+        // 创建辅助工具
+        this.axesHelper = new THREE.AxesHelper(5);
+        this.scene.add(this.axesHelper);
+
+        const gridHelper = new THREE.GridHelper(10, 10);
+        this.scene.add(gridHelper);
+
+        // 添加光源
+        const ambientLight = new THREE.AmbientLight(0xffffff, 1.0);
+        this.scene.add(ambientLight);
+
+        // 初始化性能监控
+        this.stats = new Stats();
+        this.stats.domElement.style.position = 'absolute';
+        this.stats.domElement.style.top = '60px';
+        this.stats.domElement.style.left = '20px';
+        this.container.appendChild(this.stats.domElement);
+
+        this.debug('Viewer initialized successfully');
+    }
+
+    bindEvents() {
+        window.addEventListener('resize', this.onWindowResize.bind(this), false);
+        document.getElementById('reset-camera').addEventListener('click', this.resetCamera.bind(this));
+        document.getElementById('toggle-axes').addEventListener('click', this.toggleAxes.bind(this));
+        document.getElementById('reset-transform').addEventListener('click', this.resetTransform.bind(this));
+        document.getElementById('input').addEventListener('change', this.handleFileUpload.bind(this));
+        
+        // 点云设置控制
+        document.getElementById('point-size').addEventListener('input', (e) => {
+            this.updatePointSize(parseFloat(e.target.value));
+        });
+        
+        document.getElementById('point-color').addEventListener('input', (e) => {
+            this.updatePointColor(e.target.value);
+        });
+        
+        document.getElementById('point-opacity').addEventListener('input', (e) => {
+            this.updatePointOpacity(parseFloat(e.target.value));
+        });
+
+        // 拖拽上传
+        this.container.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+        });
+
+        this.container.addEventListener('drop', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const files = e.dataTransfer.files;
+            if (files.length) {
+                this.handleFileUpload({ target: { files: [files[0]] } });
+            }
+        });
+    }
+
+    animate() {
+        requestAnimationFrame(this.animate.bind(this));
+        this.controls.update();
+        this.stats.update();
+        this.renderer.render(this.scene, this.camera);
+
+        // 更新FPS显示
+        document.getElementById('fps-count').textContent = Math.round(this.stats.domElement.children[0].children[0].textContent);
+        
+        // 更新内存使用显示
+        const memoryUsage = performance.memory ? 
+            Math.round(performance.memory.usedJSHeapSize / 1048576) : 0;
+        document.getElementById('memory-usage').textContent = `${memoryUsage} MB`;
+    }
+
+    showLoading(show = true) {
+        this.loadingOverlay.style.display = show ? 'flex' : 'none';
+    }
+
+    debug(message, type = 'info') {
+        const timestamp = new Date().toLocaleTimeString();
+        const formattedMessage = `[${timestamp}] [${type}] ${message}`;
+        console.log(formattedMessage);
+
+        const messageElement = document.createElement('div');
+        messageElement.className = `debug-message debug-${type}`;
+        messageElement.textContent = formattedMessage;
+        this.debugElement.appendChild(messageElement);
+        this.debugElement.scrollTop = this.debugElement.scrollHeight;
+
+        // 限制debug信息数量
+        while (this.debugElement.children.length > 50) {
+            this.debugElement.removeChild(this.debugElement.firstChild);
+        }
+    }
+
+    async handleFileUpload(event) {
+        try {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            this.debug(`Loading file: ${file.name} (${(file.size / 1024).toFixed(2)} KB)`);
+            this.showLoading(true);
+
+            const content = await this.readFile(file);
+            
+            if (file.name.endsWith('.xyz')) {
+                await this.loadXYZ(content);
+            } else if (file.name.endsWith('.pcd')) {
+                await this.loadPCD(content);
+            }
+
+            this.showLoading(false);
+        } catch (error) {
+            this.debug(`Error loading file: ${error.message}`, 'error');
+            this.showLoading(false);
+        }
+    }
+
+    readFile(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (e) => resolve(e.target.result);
+            reader.onerror = (e) => reject(new Error('File reading failed'));
+            reader.readAsText(file);
+        });
+    }
+
+    async loadXYZ(contents) {
+        const lines = contents.split('\n');
+        const positions = [];
+        let pointCount = 0;
+
+        for (let line of lines) {
+            line = line.trim();
+            if (!line) continue;
+
+            const values = line.split(/\s+/);
+            if (values.length >= 3) {
+                const [x, y, z] = values.map(Number);
+                if (!isNaN(x) && !isNaN(y) && !isNaN(z)) {
+                    positions.push(x, y, z);
+                    pointCount++;
+                }
+            }
+        }
+
+        if (positions.length > 0) {
+            this.createPointCloud(positions);
+            this.debug(`Created point cloud with ${pointCount} points`);
+        }
+    }
+
+    async loadPCD(contents) {
+        const lines = contents.split('\n');
+        const positions = [];
+        let readingData = false;
+        let headerProcessed = false;
+
+        for (let line of lines) {
+            line = line.trim();
+            if (!line) continue;
+
+            if (!headerProcessed) {
+                if (line === 'DATA ascii') {
+                    readingData = true;
+                    headerProcessed = true;
+                }
+                continue;
+            }
+
+            if (readingData) {
+                const values = line.split(/\s+/);
+                if (values.length >= 3) {
+                    const [x, y, z] = values.map(Number);
+                    if (!isNaN(x) && !isNaN(y) && !isNaN(z)) {
+                        positions.push(x, y, z);
+                    }
+                }
+            }
+        }
+
+        if (positions.length > 0) {
+            this.createPointCloud(positions);
+        }
+    }
+
+    createPointCloud(positions) {
+        if (this.points) {
+            this.disposePointCloud();
+        }
+
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+
+        const material = new THREE.PointsMaterial({
+            size: this.config.pointSize,
+            sizeAttenuation: true,
+            color: this.config.pointColor,
+            transparent: true,
+            opacity: this.config.pointOpacity
+        });
+
+        this.points = new THREE.Points(geometry, material);
+        this.scene.add(this.points);
+
+        document.getElementById('point-count').textContent = positions.length / 3;
+        this.resetCamera();
+    }
+
+    disposePointCloud() {
+        if (this.points) {
+            this.points.geometry.dispose();
+            this.points.material.dispose();
+            this.scene.remove(this.points);
+            this.points = null;
+        }
+    }
+
+    updatePointSize(size) {
+        if (this.points) {
+            this.points.material.size = size;
+            this.config.pointSize = size;
+        }
+    }
+
+    updatePointColor(color) {
+        if (this.points) {
+            this.points.material.color.set(color);
+            this.config.pointColor = new THREE.Color(color).getHex();
+        }
+    }
+
+    updatePointOpacity(opacity) {
+        if (this.points) {
+            this.points.material.opacity = opacity;
+            this.config.pointOpacity = opacity;
+        }
+    }
+
+    resetCamera() {
+        if (this.points) {
+            const box = new THREE.Box3().setFromObject(this.points);
+            const center = box.getCenter(new THREE.Vector3());
+            const size = box.getSize(new THREE.Vector3());
+            const maxDim = Math.max(size.x, size.y, size.z);
+            const distance = maxDim * 2;
+
+            this.camera.position.set(
+                center.x + distance,
+                center.y + distance,
+                center.z + distance
+            );
+            this.camera.lookAt(center);
+            this.controls.target.copy(center);
+        } else {
+            this.camera.position.fromArray(this.config.camera.position);
+            this.camera.lookAt(0, 0, 0);
+            this.controls.target.set(0, 0, 0);
+        }
+        this.camera.updateProjectionMatrix();
+        this.controls.update();
+    }
+
+    toggleAxes() {
+        if (this.axesHelper) {
+            this.axesHelper.visible = !this.axesHelper.visible;
+        }
+    }
+
+    resetTransform() {
+        if (this.points) {
+            this.points.position.set(0, 0, 0);
+            this.points.rotation.set(0, 0, 0);
+            this.points.scale.set(1, 1, 1);
+        }
+    }
+
+    onWindowResize() {
+        this.camera.aspect = window.innerWidth / window.innerHeight;
+        this.camera.updateProjectionMatrix();
+        this.renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+}
+
+// 错误处理
+window.addEventListener('error', (e) => {
+    const viewer = window.pointCloudViewer;
+    if (viewer) {
+        viewer.debug(`Global error: ${e.message}`, 'error');
+    }
+});
+
+// 初始化查看器
+window.addEventListener('DOMContentLoaded', () => {
+    try {
+        window.pointCloudViewer = new PointCloudViewer();
+    } catch (error) {
+        console.error('Failed to initialize viewer:', error);
+    }
+});
+
+</script>  
+</body>
+</html>
