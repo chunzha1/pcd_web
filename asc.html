@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image to ASCII Art Converter</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f0f0f0;
+        }
+        .container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .controls {
+            margin-bottom: 20px;
+        }
+        .preview {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        #originalImage, #asciiOutput {
+            margin-top: 20px;
+        }
+        #asciiOutput {
+            font-family: monospace;
+            white-space: pre;
+            overflow: auto;
+            background-color: black;
+            color: white;
+            padding: 10px;
+            border-radius: 4px;
+            min-height: 200px;
+            max-height: 600px;
+        }
+        canvas {
+            display: none;
+        }
+        select, input[type="number"], button {
+            padding: 8px;
+            margin: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .input-group {
+            margin-bottom: 10px;
+        }
+        label {
+            display: inline-block;
+            width: 120px;
+        }
+        .animation-controls {
+            margin-top: 10px;
+        }
+        .animation-speed {
+            display: flex;
+            align-items: center;
+            margin-top: 10px;
+        }
+        #animationSpeed {
+            width: 200px;
+            margin: 0 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Image to ASCII Art Converter</h1>
+        
+        <div class="controls">
+            <div class="input-group">
+                <label for="imageInput">选择图片：</label>
+                <input type="file" id="imageInput" accept="image/*">
+            </div>
+            
+            <div class="input-group">
+                <label for="modeSelect">字符模式：</label>
+                <select id="modeSelect">
+                    <option value="simple">简单 (@%#*+=-:. )</option>
+                    <option value="complex">复杂 ($@B%8&WM#*oahkbdpqwmZO0QLCJUYXzcvunxrjft/\|()1{}[]?-_+~<>i!lI;:,"^`'. )</option>
+                    <option value="china">中文 (龘䶑瀰幗獼鑭躙䵹觿䲔釅欄鐮䥯鶒獭鰽襽螻鰱蹦屭繩圇婹歜剛屧磕媿慪像僭堳噞呱棒偁呣塙唑浠唼刻凌咄亟拮俗参坒估这聿布允仫忖玗甴木亪女去凸五圹亐囗弌九人亏产斗丩艹刂彳丬了５丄三亻讠厂丆丨１二宀冖乛一丶、)</option>
+                </select>
+            </div>
+            
+            <div class="input-group">
+                <label for="numCols">输出宽度：</label>
+                <input type="number" id="numCols" value="150" min="10" max="400">
+            </div>
+            
+            <div class="animation-speed">
+                <label for="animationSpeed">动画速度：</label>
+                <input type="range" id="animationSpeed" min="1" max="100" value="50">
+                <span id="speedValue">50%</span>
+            </div>
+
+            <button onclick="convertToAscii(true)">转换(动画)</button>
+            <button onclick="convertToAscii(false)">立即显示</button>
+        </div>
+
+        <div class="preview">
+            <div>
+                <h3>原始图片：</h3>
+                <img id="originalImage" alt="Original Image">
+            </div>
+            <div>
+                <h3>ASCII 输出：</h3>
+                <div id="asciiOutput"></div>
+            </div>
+        </div>
+    </div>
+
+    <canvas id="canvas"></canvas>
+
+    <script>
+        const CHAR_LISTS = {
+            simple: '@%#*+=-:. ',
+            complex: '$@B%8&WM#*oahkbdpqwmZO0QLCJUYXzcvunxrjft/\\|()1{}[]?-_+~<>i!lI;:,"^`\'. ',
+            china: '龘䶑瀰幗獼鑭躙䵹觿䲔釅欄鐮䥯鶒獭鰽襽螻鰱蹦屭繩圇婹歜剛屧磕媿慪像僭堳噞呱棒偁呣塙唑浠唼刻凌咄亟拮俗参坒估这聿布允仫忖玗甴木亪女去凸五圹亐囗弌九人亏产斗丩艹刂彳丬了５丄三亻讠厂丆丨１二宀冖乛一丶、'
+        };
+
+        // 更新速度显示
+        document.getElementById('animationSpeed').addEventListener('input', function(e) {
+            document.getElementById('speedValue').textContent = e.target.value + '%';
+        });
+
+        function getGreyscale(r, g, b) {
+            return 0.299 * r + 0.587 * g + 0.114 * b;
+        }
+
+        let animationTimeout;
+
+        // 添加动画显示函数
+        function displayWithAnimation(asciiLines) {
+            const output = document.getElementById('asciiOutput');
+            output.textContent = '';
+            let currentLine = 0;
+            
+            // 根据速度滑块计算延迟时间（速度越快，延迟越短）
+            const speedValue = document.getElementById('animationSpeed').value;
+            const delay = Math.max(5, 105 - speedValue); // 将1-100的值映射到100-5的延迟时间
+
+            function displayNextLine() {
+                if (currentLine < asciiLines.length) {
+                    output.textContent += asciiLines[currentLine] + '\n';
+                    output.scrollTop = output.scrollHeight;
+                    currentLine++;
+                    animationTimeout = setTimeout(displayNextLine, delay);
+                }
+            }
+
+            displayNextLine();
+        }
+
+        function convertToAscii(animate = false) {
+            // 清除之前的动画
+            if (animationTimeout) {
+                clearTimeout(animationTimeout);
+            }
+
+            const img = document.getElementById('originalImage');
+            const canvas = document.getElementById('canvas');
+            const ctx = canvas.getContext('2d');
+            
+            canvas.width = img.width;
+            canvas.height = img.height;
+            ctx.drawImage(img, 0, 0);
+            
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const pixels = imageData.data;
+            
+            const mode = document.getElementById('modeSelect').value;
+            const numCols = parseInt(document.getElementById('numCols').value);
+            const CHAR_LIST = CHAR_LISTS[mode];
+            const num_chars = CHAR_LIST.length;
+            
+            const cell_width = canvas.width / numCols;
+            const cell_height = 2 * cell_width;
+            const num_rows = Math.floor(canvas.height / cell_height);
+            
+            let asciiLines = [];
+            for (let i = 0; i < num_rows; i++) {
+                let line = '';
+                for (let j = 0; j < numCols; j++) {
+                    let sum = 0;
+                    let count = 0;
+                    
+                    for (let y = Math.floor(i * cell_height); y < Math.min(Math.floor((i + 1) * cell_height), canvas.height); y++) {
+                        for (let x = Math.floor(j * cell_width); x < Math.min(Math.floor((j + 1) * cell_width), canvas.width); x++) {
+                            const index = (y * canvas.width + x) * 4;
+                            const grey = getGreyscale(pixels[index], pixels[index + 1], pixels[index + 2]);
+                            sum += grey;
+                            count++;
+                        }
+                    }
+                    
+                    const average = sum / count;
+                    const charIndex = Math.min(Math.floor(average * num_chars / 255), num_chars - 1);
+                    line += CHAR_LIST[charIndex];
+                }
+                asciiLines.push(line);
+            }
+            
+            if (animate) {
+                displayWithAnimation(asciiLines);
+            } else {
+                document.getElementById('asciiOutput').textContent = asciiLines.join('\n');
+            }
+        }
+
+        document.getElementById('imageInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    const img = document.getElementById('originalImage');
+                    img.onload = function() {
+                        convertToAscii(true); // 默认使用动画效果
+                    }
+                    img.src = event.target.result;
+                }
+                reader.readAsDataURL(file);
+            }
+        });
+    </script>
+</body>
+</html>
