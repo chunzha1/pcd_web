@@ -261,33 +261,38 @@ border: 2px solid var(--cyber-blue);
 z-index: -1;
 }
 
-/* 赛博宠物样式 */
+/* 赛博宠物样式 /
 .pet-container {
+position: relative; / 使宠物可以相对于此容器定位 /
+width: 150px;
+height: 150px;
+background: #222;
+border: 1px solid #333;
+border-radius: 5px;
+overflow: hidden; / 防止宠物超出容器 */
 display: flex;
 flex-direction: column;
 align-items: center;
 gap: 10px;
 padding: 10px;
-background: #222;
-border: 1px solid #333;
-border-radius: 5px;
 }
 
 #pet-display {
-width: 80px;
-height: 80px;
+position: absolute; /* 使宠物可以在容器内自由移动 /
+width: 40px;
+height: 40px;
 background-color: var(--cyber-blue);
 border-radius: 50%;
 display: flex;
 justify-content: center;
 align-items: center;
-font-size: 2em;
+font-size: 1.5em;
 color: var(--dark-bg);
-text-shadow: 2px 2px 2px var(--neon-pink);
-/* 可以替换为更复杂的视觉效果或动画 /
-line-height: 80px;
+text-shadow: 1px 1px 1px var(--neon-pink);
+line-height: 40px;
 text-align: center;
-user-select: none; / 禁止选中 */
+user-select: none;
+cursor: pointer; / 提示可以点击 */
 }
 
 #pet-actions button {
@@ -298,6 +303,7 @@ font-size: 0.8em;
 #pet-status {
 font-size: 0.9em;
 text-align: center;
+margin-top: 160px; /* 将状态信息移到宠物活动区域下方 */
 }
 </style>
 
@@ -316,7 +322,7 @@ if (futureButton) {
 futureButton.addEventListener('click', predictFuture);
 }
 
-updatePetDisplay(); // 初始化宠物显示
+initializePet();
 });
 
 // 全息投影初始化
@@ -379,34 +385,60 @@ const answers = [
 return new Promise(resolve => setTimeout(() => resolve(answers[(Math.random() * answers.length) | 0]), 1000)); // 模拟延迟
 }
 
-// 新增赛博宠物相关函数和变量
+// 赛博宠物相关函数和变量
 let petMood = 'neutral';
 const petDisplayElement = document.getElementById('pet-display');
 const petStatusElement = document.getElementById('pet-status');
+const petContainerElement = document.getElementById('pet-container');
+let petInterval;
+let petX = 20;
+let petY = 20;
+let petSpeedX = 1;
+let petSpeedY = 1;
 
 function updatePetDisplay() {
 if (!petDisplayElement) return;
-switch (petMood) {
+petDisplayElement.textContent = getPetEmoji(petMood);
+petDisplayElement.style.backgroundColor = getPetColor(petMood);
+petDisplayElement.style.left = petX + 'px';
+petDisplayElement.style.top = petY + 'px';
+}
+
+function getPetEmoji(mood) {
+switch (mood) {
 case 'happy':
-petDisplayElement.textContent = '😊';
-petDisplayElement.style.backgroundColor = '#00ff00'; // 绿色
-break;
+return '😊';
 case 'sad':
-petDisplayElement.textContent = '😞';
-petDisplayElement.style.backgroundColor = '#00f7ff'; // 蓝色
-break;
+return '😞';
 case 'energetic':
-petDisplayElement.textContent = '⚡';
-petDisplayElement.style.backgroundColor = '#ffff00'; // 黄色
-break;
+return '⚡';
 case 'tired':
-petDisplayElement.textContent = '😴';
-petDisplayElement.style.backgroundColor = '#888'; // 灰色
-break;
+return '😴';
+case 'hungry':
+return '😋';
+case 'playful':
+return '😼';
 default:
-petDisplayElement.textContent = '🤖';
-petDisplayElement.style.backgroundColor = getComputedStyle(document.documentElement).getPropertyValue('--cyber-blue');
-break;
+return '🤖';
+}
+}
+
+function getPetColor(mood) {
+switch (mood) {
+case 'happy':
+return '#00ff00'; // 绿色
+case 'sad':
+return '#00f7ff'; // 蓝色
+case 'energetic':
+return '#ffff00'; // 黄色
+case 'tired':
+return '#888'; // 灰色
+case 'hungry':
+return '#ffa500'; // 橙色
+case 'playful':
+return '#f0f'; // 紫色
+default:
+return getComputedStyle(document.documentElement).getPropertyValue('--cyber-blue');
 }
 }
 
@@ -422,16 +454,19 @@ updatePetMood('happy');
 updatePetStatus('宠物吃得很开心！');
 break;
 case 'play':
-updatePetMood('energetic');
-updatePetStatus('宠物正在玩耍，充满活力！');
+updatePetMood('playful');
+updatePetStatus('宠物正在玩耍，很兴奋！');
+startPetWander(); // 重新开始自由活动
 break;
 case 'sleep':
 updatePetMood('tired');
 updatePetStatus('宠物正在安静下来...');
+stopPetWander();
 setTimeout(() => {
 updatePetMood('neutral');
 updatePetStatus('宠物休息好了。');
-}, 3000);
+startPetWander();
+}, 5000);
 break;
 default:
 updatePetStatus('未知互动');
@@ -441,6 +476,57 @@ updatePetDisplay();
 
 function updatePetMood(newMood) {
 petMood = newMood;
+}
+
+function petWander() {
+if (!petContainerElement || !petDisplayElement) return;
+const containerWidth = petContainerElement.clientWidth - petDisplayElement.clientWidth;
+const containerHeight = petContainerElement.clientHeight - petDisplayElement.clientHeight;
+
+petX += petSpeedX;
+petY += petSpeedY;
+
+if (petX < 0 || petX > containerWidth) {
+petSpeedX *= -1;
+updatePetMood(petSpeedX > 0 ? 'energetic' : 'sad'); // 根据移动方向改变心情
+}
+if (petY < 0 || petY > containerHeight) {
+petSpeedY *= -1;
+updatePetMood(petSpeedY > 0 ? 'happy' : 'tired'); // 根据移动方向改变心情
+}
+
+updatePetDisplay();
+}
+
+function startPetWander() {
+if (petInterval) clearInterval(petInterval);
+petInterval = setInterval(petWander, 50); // 每 50 毫秒更新一次位置
+updatePetMood('neutral');
+updatePetStatus('宠物正在探索...');
+}
+
+function stopPetWander() {
+clearInterval(petInterval);
+petSpeedX = 0;
+petSpeedY = 0;
+}
+
+function handlePetClick() {
+updatePetMood('playful');
+updatePetStatus('你摸了摸宠物！');
+// 可以添加被点击后的其他行为
+petSpeedX = (Math.random() - 0.5) * 3; // 被点击后随机改变方向和速度
+petSpeedY = (Math.random() - 0.5) * 3;
+if (!petInterval) startPetWander(); // 如果停止了就重新开始
+setTimeout(() => updatePetMood('neutral'), 2000);
+}
+
+function initializePet() {
+if (petDisplayElement) {
+petDisplayElement.addEventListener('click', handlePetClick);
+startPetWander();
+}
+updatePetDisplay();
 }
 
 // 元宇宙成长模拟器 (需要实现)
