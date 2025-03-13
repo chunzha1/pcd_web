@@ -1,0 +1,39 @@
+<svg width="600" height="400" xmlns="http://www.w3.org/2000/svg">
+  <!-- 背景 -->
+  <rect width="100%" height="100%" fill="#f0f0f0"/>
+
+  <!-- 泵浦源 (激光二极管) -->
+  <rect x="50" y="150" width="30" height="60" fill="#3498db" stroke="black" stroke-width="1"/>
+  <text x="55" y="240" font-size="12" text-anchor="middle">泵浦源</text>
+  <path d="M80,180 L120,180" stroke="red" stroke-width="2"/>
+  <path d="M80,210 L120,210" stroke="red" stroke-width="2"/>
+
+  <!-- 增益介质 (晶体) -->
+  <rect x="120" y="130" width="100" height="100" fill="#2ecc71" stroke="black" stroke-width="1"/>
+  <text x="170" y="185" font-size="14" text-anchor="middle">增益介质</text>
+
+  <!-- Q 开关 -->
+  <rect x="240" y="130" width="50" height="100" fill="#9b59b6" stroke="black" stroke-width="1"/>
+  <text x="265" y="185" font-size="14" text-anchor="middle">Q开关</text>
+
+  <!-- 反射镜 1 (高反射) -->
+  <rect x="320" y="120" width="20" height="120" fill="#777" stroke="black" stroke-width="1"/>
+  <text x="330" y="185" font-size="12" text-anchor="middle">高反</text>
+
+  <!-- 反射镜 2 (输出耦合器) -->
+  <rect x="530" y="120" width="20" height="120" fill="#777" stroke="black" stroke-width="1"/>
+  <text x="540" y="185" font-size="12" text-anchor="middle">输出</text>
+
+  <!-- 谐振腔内光路 -->
+  <path d="M330,180 L530,180" stroke="blue" stroke-width="2"/>
+  <path d="M530,210 L330,210" stroke="blue" stroke-width="2"/>
+
+  <!-- 输出激光脉冲 -->
+  <path d="M550,195 L580,195" stroke="orange" stroke-width="3"/>
+  <path d="M550,195 L580,180" stroke="orange" stroke-width="3"/>
+  <path d="M550,195 L580,210" stroke="orange" stroke-width="3"/>
+  <text x="570" y="230" font-size="12" text-anchor="middle">输出激光</text>
+
+  <!-- 标注 -->
+  <text x="300" y="350" font-size="16" text-anchor="middle">Q 开关脉冲激光器示意图</text>
+</svg>
