@@ -50,6 +50,21 @@
             text-align: center;
             padding: 1em;
         }
+
+        .simulation-controls {
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 1em;
+        }
+
+        .simulation-controls label {
+            margin-bottom: 0.5em;
+        }
+
+        .simulation-controls input[type="range"] {
+            width: 200px;
+        }
+
     </style>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
@@ -103,15 +118,23 @@
 
         <section id="simulation">
             <h2>仿真</h2>
-            <p>可以使用各种软件工具来模拟脉冲激光器的行为。常用的软件包括：</p>
-            <ul>
-                <li>**COMSOL Multiphysics:** 用于模拟光与物质的相互作用，可以建立详细的激光器模型。</li>
-                <li>**RP Photonics Laser Simulation Software:**  专门用于激光器模拟，可以模拟各种类型的激光器，包括脉冲激光器。</li>
-                <li>**MATLAB:**  可以使用MATLAB编写代码来模拟激光器的速率方程。</li>
-            </ul>
-            <p>以下是一个简单的速率方程仿真结果的图表（使用Chart.js）：</p>
+            <p>这是一个简化的 Q 开关激光器仿真，基于速率方程。  你可以调整参数并观察脉冲形状的变化。</p>
 
-            <canvas id="simulationChart" width="400" height="200"></canvas>
+            <div class="simulation-controls">
+                <label for="pumpRate">泵浦速率 (Rp):</label>
+                <input type="range" id="pumpRate" min="0" max="1000" value="500">
+                <span id="pumpRateValue">500</span>
+
+                <label for="loss">腔内损耗 (L):</label>
+                <input type="range" id="loss" min="0" max="100" value="10">
+                <span id="lossValue">10</span>
+
+                <label for="qSwitchTime">Q 开关时间 (t_Q):</label>
+                <input type="range" id="qSwitchTime" min="10" max="500" value="100">
+                <span id="qSwitchTimeValue">100</span>
+            </div>
+
+            <canvas id="simulationChart" width="600" height="300"></canvas>
         </section>
 
         <section id="diagram">
@@ -128,50 +151,138 @@
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             const ctx = document.getElementById('simulationChart').getContext('2d');
+            let myChart; // 用于存储 chart 对象
 
-            // 简单的仿真数据 (示例，可以根据实际仿真结果修改)
-            const data = {
-                labels: ['0ns', '10ns', '20ns', '30ns', '40ns', '50ns'],
-                datasets: [{
-                    label: '光子数',
-                    data: [0, 10, 50, 100, 60, 10],
-                    fill: false,
-                    borderColor: 'rgb(75, 192, 192)',
-                    tension: 0.1
-                }]
-            };
+            // 获取滑块元素
+            const pumpRateSlider = document.getElementById('pumpRate');
+            const lossSlider = document.getElementById('loss');
+            const qSwitchTimeSlider = document.getElementById('qSwitchTime');
 
-            const config = {
-                type: 'line',
-                data: data,
-                options: {
-                    responsive: true,
-                    plugins: {
-                        title: {
-                            display: true,
-                            text: '模拟脉冲激光器输出'
-                        },
-                    },
-                    scales: {
-                        x: {
-                            display: true,
+            // 获取滑块值的显示元素
+            const pumpRateValue = document.getElementById('pumpRateValue');
+            const lossValue = document.getElementById('lossValue');
+            const qSwitchTimeValue = document.getElementById('qSwitchTimeValue');
+
+            // 初始参数
+            let Rp = parseFloat(pumpRateSlider.value); // 泵浦速率
+            let L = parseFloat(lossSlider.value) / 100; // 腔内损耗
+            let t_Q = parseFloat(qSwitchTimeSlider.value); // Q 开关时间
+
+            // 速率方程参数
+            const N0 = 1e18; // 增益介质总原子数密度
+            const sigma = 1e-20; // 受激发射截面
+            const tau = 1e-4;   // 荧光寿命
+            const c = 3e8;       // 光速
+            const cavityLength = 0.1; // 腔长
+            const dt = 1e-9;      // 时间步长
+            const time = 1000e-9;   // 仿真时间
+            const steps = time / dt;
+
+            function simulateLaser() {
+                Rp = parseFloat(pumpRateSlider.value);
+                L = parseFloat(lossSlider.value) / 100;
+                t_Q = parseFloat(qSwitchTimeSlider.value);
+
+                // 初始化
+                let n = 0;  // 激发态粒子数密度
+                let p = 1e10; // 光子数密度（初始噪声）
+                let photonData = [];
+                let timeData = [];
+
+                for (let i = 0; i < steps; i++) {
+                    let t = i * dt;
+
+                    // Q开关
+                    let loss = L;
+                    if (t > t_Q * dt * 10) { // Q开关在t_Q ns时打开。
+                        loss = 0.01; // 低损耗
+                    }
+
+                    // 速率方程
+                    let dn_dt = Rp * N0 - n / tau - sigma * c * n * p / cavityLength;
+                    let dp_dt = sigma * c * n * p / cavityLength - loss * c * p / cavityLength;
+
+                    n += dn_dt * dt;
+                    p += dp_dt * dt;
+
+                    if (p < 0) p = 0; // 防止光子数变为负数
+
+                    timeData.push(t * 1e9); // 时间，单位 ns
+                    photonData.push(p);
+                }
+
+                return { time: timeData, photons: photonData };
+            }
+
+            function updateChart() {
+                const simulationResults = simulateLaser();
+
+                const data = {
+                    labels: simulationResults.time,
+                    datasets: [{
+                        label: '光子数',
+                        data: simulationResults.photons,
+                        fill: false,
+                        borderColor: 'rgb(75, 192, 192)',
+                        tension: 0.1
+                    }]
+                };
+
+                const config = {
+                    type: 'line',
+                    data: data,
+                    options: {
+                        responsive: true,
+                        plugins: {
                             title: {
                                 display: true,
-                                text: '时间 (ns)'
-                            }
+                                text: 'Q开关激光器仿真'
+                            },
                         },
-                        y: {
-                            display: true,
-                            title: {
+                        scales: {
+                            x: {
                                 display: true,
-                                text: '相对光子数'
+                                title: {
+                                    display: true,
+                                    text: '时间 (ns)'
+                                }
+                            },
+                            y: {
+                                display: true,
+                                title: {
+                                    display: true,
+                                    text: '相对光子数'
+                                }
                             }
                         }
                     }
+                };
+                if (myChart) {
+                    myChart.destroy();
                 }
-            };
 
-            const myChart = new Chart(ctx, config);
+                myChart = new Chart(ctx, config);
+            }
+
+            // 初始化图表
+            updateChart();
+
+            // 添加事件监听器
+            pumpRateSlider.addEventListener('input', function () {
+                pumpRateValue.textContent = this.value;
+                updateChart();
+            });
+
+            lossSlider.addEventListener('input', function () {
+                lossValue.textContent = this.value;
+                updateChart();
+            });
+
+            qSwitchTimeSlider.addEventListener('input', function () {
+                qSwitchTimeValue.textContent = this.value;
+                updateChart();
+            });
+
         });
     </script>
 </body>
