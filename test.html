@@ -21,17 +21,33 @@
     <div class="control-panel cyber-border">
         <h1 class="glitch-container"><i class="fas fa-microchip"></i> 婴儿OS v1.0</h1>
 
-        <!-- 赛博宠物模拟器 -->
+        <!-- 赛博宠物伴侣 -->
         <div class="panel-section">
-            <h2><i class="fas fa-paw"></i> 赛博宠物 v0.1</h2>
-            <div id="pet-container" class="pet-container">
-                <div id="pet-display">🤖</div>
-                <div id="pet-actions">
-                    <button onclick="interactWithPet('feed')"><i class="fas fa-utensils"></i> 喂食</button>
-                    <button onclick="interactWithPet('play')"><i class="fas fa-baseball-ball"></i> 玩耍</button>
-                    <button onclick="interactWithPet('sleep')"><i class="fas fa-moon"></i> 安抚</button>
+            <h2><i class="fas fa-robot"></i> 赛博伴侣 v0.2</h2>
+            <div id="pet-companion-container" class="pet-companion-container">
+                <div id="pet-companion" class="pet-companion">
+                    <div class="body img-bg"></div>
+                    <div class="head-wrapper">
+                        <div class="head img-bg"></div>
+                    </div>
+                    <div class="leg-wrapper">
+                        <div class="leg one img-bg"></div>
+                    </div>
+                    <div class="leg-wrapper">
+                        <div class="leg two img-bg"></div>
+                    </div>
+                    <div class="leg-wrapper">
+                        <div class="leg three img-bg"></div>
+                    </div>
+                    <div class="leg-wrapper">
+                        <div class="leg four img-bg"></div>
+                    </div>
+                    <div class="tail-wrapper">
+                        <div class="tail img-bg"></div>
+                    </div>
+                    <!-- 可以添加眼睛、嘴巴等更多宠物部件的 div -->
                 </div>
-                <div id="pet-status" class="output-box">状态：等待互动</div>
+                <div id="pet-indicator" class="output-box"></div>
             </div>
         </div>
 
@@ -185,6 +201,7 @@ padding: 10px;
 border: 1px solid #333;
 white-space: pre-wrap;
 font-size: 0.9em;
+text-align: center;
 }
 
 .canvas-container {
@@ -261,69 +278,184 @@ border: 2px solid var(--cyber-blue);
 z-index: -1;
 }
 
-/* 赛博宠物样式 /
-.pet-container {
-position: relative; / 使宠物可以相对于此容器定位 /
-width: 150px;
+/* 赛博宠物伴侣样式 (需要根据你的宠物形象调整) /
+.pet-companion-container {
+position: relative;
+width: 150px; / 调整容器大小 */
 height: 150px;
-background: #222;
+background-color: #1a1a1a;
 border: 1px solid #333;
 border-radius: 5px;
-overflow: hidden; / 防止宠物超出容器 */
-display: flex;
-flex-direction: column;
-align-items: center;
-gap: 10px;
-padding: 10px;
-}
-
-#pet-display {
-position: absolute; /* 使宠物可以在容器内自由移动 /
-width: 40px;
-height: 40px;
-background-color: var(--cyber-blue);
-border-radius: 50%;
 display: flex;
 justify-content: center;
 align-items: center;
-font-size: 1.5em;
-color: var(--dark-bg);
-text-shadow: 1px 1px 1px var(--neon-pink);
-line-height: 40px;
-text-align: center;
-user-select: none;
-cursor: pointer; / 提示可以点击 */
+overflow: hidden;
 }
 
-#pet-actions button {
-margin: 5px;
+.pet-companion {
+position: absolute;
+width: 60px; /* 宠物的基础大小 /
+height: 60px;
+transition: 0.3s; / 添加过渡效果 /
+cursor: grab;
+/ 你可以设置默认的宠物样式，例如背景色或使用图片 */
+}
+
+/* 以下是模仿“赛博遛狗”的简化版宠物部件样式，你需要替换成你想要的宠物外观 */
+.img-bg {
+image-rendering: pixelated;
+background-repeat: no-repeat !important;
+}
+
+.body {
+position: absolute;
+background-color: var(--cyber-blue);
+width: 30px;
+height: 20px;
+top: 25px;
+left: 15px;
+border-radius: 8px;
+}
+
+.head-wrapper {
+position: absolute;
+top: 10px;
+left: 20px;
+width: 20px;
+height: 15px;
+overflow: hidden;
+}
+
+.head {
+position: absolute;
+background-color: var(--neon-pink);
+width: 20px;
+height: 15px;
+border-radius: 3px;
+}
+
+.leg {
+position: absolute;
+background-color: #ccc;
+width: 3px;
+height: 10px;
+border-radius: 0 0 2px 2px;
+}
+
+.leg.one { left: 10px; top: 45px; }
+.leg.two { left: 20px; top: 48px; }
+.leg.three { left: 30px; top: 48px; }
+.leg.four { left: 40px; top: 45px; }
+
+.tail-wrapper {
+position: absolute;
+width: 8px;
+height: 8px;
+top: 20px;
+left: 40px;
+}
+
+.tail {
+position: absolute;
+background-color: #aaa;
+width: 8px;
+height: 8px;
+border-radius: 50%;
+}
+
+#pet-indicator {
 font-size: 0.8em;
+text-align: center;
+margin-top: 5px;
 }
 
-#pet-status {
-font-size: 0.9em;
-text-align: center;
-margin-top: 160px; /* 将状态信息移到宠物活动区域下方 */
+.pet-companion.happy .head {
+background-color: #00ff00; /* 示例：开心时头部变绿 */
 }
 </style>
 
 <script>
 // script.js
-document.addEventListener('DOMContentLoaded', () => {
-initHologram();
+let petCompanion = null;
+let petContainer = null;
+let petIndicator = null;
+let isDragging = false;
+let offsetX, offsetY;
 
-const adviceButton = document.getElementById('advice-button');
-if (adviceButton) {
-adviceButton.addEventListener('click', generateAdvice);
+function initPetCompanion() {
+petContainer = document.getElementById('pet-companion-container');
+petCompanion = document.getElementById('pet-companion');
+petIndicator = document.getElementById('pet-indicator');
+
+if (!petContainer || !petCompanion || !petIndicator) return;
+
+// 宠物跟随鼠标 (移动)
+petContainer.addEventListener('mousemove', (e) => {
+if (!isDragging) {
+const containerRect = petContainer.getBoundingClientRect();
+const petRect = petCompanion.getBoundingClientRect();
+const petCenterX = petRect.width / 2;
+const petCenterY = petRect.height / 2;
+
+const targetX = e.clientX - containerRect.left - petCenterX;
+const targetY = e.clientY - containerRect.top - petCenterY;
+
+// 添加一些平滑移动
+const speed = 0.1;
+const currentX = parseFloat(petCompanion.style.left) || 0;
+const currentY = parseFloat(petCompanion.style.top) || 0;
+
+const newX = currentX + (targetX - currentX) * speed;
+const newY = currentY + (targetY - currentY) * speed;
+
+petCompanion.style.left = `${newX}px`;
+petCompanion.style.top = `${newY}px`;
+petIndicator.textContent = '跟随中...';
 }
-
-const futureButton = document.getElementById('future-button');
-if (futureButton) {
-futureButton.addEventListener('click', predictFuture);
-}
-
-initializePet();
 });
+
+// 宠物被“抓住” (点击按下)
+petCompanion.addEventListener('mousedown', (e) => {
+isDragging = true;
+petCompanion.style.cursor = 'grabbing';
+offsetX = e.clientX - petCompanion.getBoundingClientRect().left;
+offsetY = e.clientY - petCompanion.getBoundingClientRect().top;
+petIndicator.textContent = '抓住！';
+});
+
+// 宠物被“放下” (鼠标松开)
+document.addEventListener('mouseup', () => {
+isDragging = false;
+petCompanion.style.cursor = 'grab';
+petIndicator.textContent = '自由活动';
+});
+
+// 拖拽宠物
+document.addEventListener('mousemove', (e) => {
+if (!isDragging) return;
+const containerRect = petContainer.getBoundingClientRect();
+let x = e.clientX - containerRect.left - offsetX;
+let y = e.clientY - containerRect.top - offsetY;
+
+// 限制宠物在容器内
+const petWidth = petCompanion.offsetWidth;
+const petHeight = petCompanion.offsetHeight;
+x = Math.max(0, Math.min(x, containerRect.width - petWidth));
+y = Math.max(0, Math.min(y, containerRect.height - petHeight));
+
+petCompanion.style.left = `${x}px`;
+petCompanion.style.top = `${y}px`;
+petIndicator.textContent = '拖拽中...';
+});
+
+// 可选：双击宠物触发特殊互动
+petCompanion.addEventListener('dblclick', () => {
+petCompanion.classList.toggle('happy'); // 切换一个 happy 状态的 CSS 类
+petIndicator.textContent = petCompanion.classList.contains('happy') ? '开心！' : '正常';
+});
+
+petIndicator.textContent = '点击并拖动我！';
+}
 
 // 全息投影初始化
 function initHologram() {
@@ -385,150 +517,6 @@ const answers = [
 return new Promise(resolve => setTimeout(() => resolve(answers[(Math.random() * answers.length) | 0]), 1000)); // 模拟延迟
 }
 
-// 赛博宠物相关函数和变量
-let petMood = 'neutral';
-const petDisplayElement = document.getElementById('pet-display');
-const petStatusElement = document.getElementById('pet-status');
-const petContainerElement = document.getElementById('pet-container');
-let petInterval;
-let petX = 20;
-let petY = 20;
-let petSpeedX = 1;
-let petSpeedY = 1;
-
-function updatePetDisplay() {
-if (!petDisplayElement) return;
-petDisplayElement.textContent = getPetEmoji(petMood);
-petDisplayElement.style.backgroundColor = getPetColor(petMood);
-petDisplayElement.style.left = petX + 'px';
-petDisplayElement.style.top = petY + 'px';
-}
-
-function getPetEmoji(mood) {
-switch (mood) {
-case 'happy':
-return '😊';
-case 'sad':
-return '😞';
-case 'energetic':
-return '⚡';
-case 'tired':
-return '😴';
-case 'hungry':
-return '😋';
-case 'playful':
-return '😼';
-default:
-return '🤖';
-}
-}
-
-function getPetColor(mood) {
-switch (mood) {
-case 'happy':
-return '#00ff00'; // 绿色
-case 'sad':
-return '#00f7ff'; // 蓝色
-case 'energetic':
-return '#ffff00'; // 黄色
-case 'tired':
-return '#888'; // 灰色
-case 'hungry':
-return '#ffa500'; // 橙色
-case 'playful':
-return '#f0f'; // 紫色
-default:
-return getComputedStyle(document.documentElement).getPropertyValue('--cyber-blue');
-}
-}
-
-function updatePetStatus(message) {
-if (!petStatusElement) return;
-petStatusElement.textContent = `状态：${message}`;
-}
-
-function interactWithPet(action) {
-switch (action) {
-case 'feed':
-updatePetMood('happy');
-updatePetStatus('宠物吃得很开心！');
-break;
-case 'play':
-updatePetMood('playful');
-updatePetStatus('宠物正在玩耍，很兴奋！');
-startPetWander(); // 重新开始自由活动
-break;
-case 'sleep':
-updatePetMood('tired');
-updatePetStatus('宠物正在安静下来...');
-stopPetWander();
-setTimeout(() => {
-updatePetMood('neutral');
-updatePetStatus('宠物休息好了。');
-startPetWander();
-}, 5000);
-break;
-default:
-updatePetStatus('未知互动');
-}
-updatePetDisplay();
-}
-
-function updatePetMood(newMood) {
-petMood = newMood;
-}
-
-function petWander() {
-if (!petContainerElement || !petDisplayElement) return;
-const containerWidth = petContainerElement.clientWidth - petDisplayElement.clientWidth;
-const containerHeight = petContainerElement.clientHeight - petDisplayElement.clientHeight;
-
-petX += petSpeedX;
-petY += petSpeedY;
-
-if (petX < 0 || petX > containerWidth) {
-petSpeedX *= -1;
-updatePetMood(petSpeedX > 0 ? 'energetic' : 'sad'); // 根据移动方向改变心情
-}
-if (petY < 0 || petY > containerHeight) {
-petSpeedY *= -1;
-updatePetMood(petSpeedY > 0 ? 'happy' : 'tired'); // 根据移动方向改变心情
-}
-
-updatePetDisplay();
-}
-
-function startPetWander() {
-if (petInterval) clearInterval(petInterval);
-petInterval = setInterval(petWander, 50); // 每 50 毫秒更新一次位置
-updatePetMood('neutral');
-updatePetStatus('宠物正在探索...');
-}
-
-function stopPetWander() {
-clearInterval(petInterval);
-petSpeedX = 0;
-petSpeedY = 0;
-}
-
-function handlePetClick() {
-updatePetMood('playful');
-updatePetStatus('你摸了摸宠物！');
-// 可以添加被点击后的其他行为
-petSpeedX = (Math.random() - 0.5) * 3; // 被点击后随机改变方向和速度
-petSpeedY = (Math.random() - 0.5) * 3;
-if (!petInterval) startPetWander(); // 如果停止了就重新开始
-setTimeout(() => updatePetMood('neutral'), 2000);
-}
-
-function initializePet() {
-if (petDisplayElement) {
-petDisplayElement.addEventListener('click', handlePetClick);
-startPetWander();
-}
-updatePetDisplay();
-}
-
 // 元宇宙成长模拟器 (需要实现)
 async function predictFuture() {
 const futureCanvasContainer = document.getElementById('future-canvas-container');
@@ -570,4 +558,19 @@ futureImage.src = 'future-baby-placeholder.png'; // 替换为实际生成的图�
 function launchMiniGame() {
 alert('🕹️ 育儿模拟器启动！(功能未实现)');
 }
+
+document.addEventListener('DOMContentLoaded', () => {
+initHologram();
+initPetCompanion(); // 初始化赛博宠物伴侣
+
+const adviceButton = document.getElementById('advice-button');
+if (adviceButton) {
+adviceButton.addEventListener('click', generateAdvice);
+}
+
+const futureButton = document.getElementById('future-button');
+if (futureButton) {
+futureButton.addEventListener('click', predictFuture);
+}
+});
 </script>
