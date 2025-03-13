@@ -3,142 +3,395 @@
 <head>
     <meta charset="UTF-8">
     <title>👶✨赛博婴儿监护终端β版</title>
-    <style>
-        :root {
-            --neon-pink: #ff00ff;
-            --cyber-blue: #00f7ff;
-        }
-        body {
-            background: #000;
-            font-family: 'Courier New', monospace;
-            color: var(--neon-pink);
-        }
-        /* 故障艺术效果 */
-        .glitch-container {
-            position: relative;
-            animation: glitch 3s infinite;
-        }
-        @keyframes glitch {
-            0% { text-shadow: 0.05em 0 0 var(--neon-pink), -0.03em -0.04em 0 var(--cyber-blue); }
-            25% { transform: translate(-0.04em, 0.02em); }
-            50% { text-shadow: -0.05em 0 0 var(--neon-pink), 0.03em 0.04em 0 var(--cyber-blue); }
-            75% { transform: translate(0.03em, -0.02em); }
-            100% { text-shadow: 0.05em 0 0 var(--neon-pink), -0.03em -0.04em 0 var(--cyber-blue); }
-        }
-        .cyber-border {
-            border: 3px solid var(--neon-pink);
-            box-shadow: 0 0 20px var(--cyber-blue);
-            position: relative;
-        }
-        .cyber-border::after {
-            content: '';
-            position: absolute;
-            top: -5px;
-            left: -5px;
-            right: -5px;
-            bottom: -5px;
-            border: 2px solid var(--cyber-blue);
-            z-index: -1;
-        }
-    </style>
+    <link rel="stylesheet" href="styles.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.18.0/dist/tf.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
 </head>
 <body>
-    <!-- 三维婴儿全息投影 -->
-    <div id="hologram" style="height: 300px;"></div>
-
-    <!-- 赛博控制面板 -->
-    <div class="cyber-border" style="padding:20px;margin:20px;">
-        <h1 class="glitch-container">🖥️ 婴儿OS v1.0</h1>
-        
-        <!-- AI哭声分析仪 -->
-        <div>
-            <button onclick="startAudioAnalysis()">🎤 启动哭声诊断协议</button>
-            <div id="diagnosis-result"></div>
+    <div class="container">
+        <!-- 三维婴儿全息投影 -->
+        <div id="hologram-container" class="cyber-border">
+            <div id="hologram"></div>
+            <div class="scanline"></div>
         </div>
 
-        <!-- 元宇宙成长模拟器 -->
-        <div>
-            <button onclick="predictFuture()">🔮 生成18年后AI预测形象</button>
-            <canvas id="future-canvas"></canvas>
+        <!-- 赛博控制面板 -->
+        <div class="control-panel cyber-border">
+            <h1 class="glitch-container"><i class="fas fa-microchip"></i> 婴儿OS v1.0</h1>
+
+            <!-- AI哭声分析仪 -->
+            <div class="panel-section">
+                <button id="audio-button"><i class="fas fa-microphone-alt"></i> 启动哭声诊断</button>
+                <div id="diagnosis-result" class="output-box"></div>
+            </div>
+
+            <!-- 元宇宙成长模拟器 -->
+            <div class="panel-section">
+                <button id="future-button"><i class="fas fa-magic"></i> 预测18年后形象</button>
+                <div id="future-canvas-container" class="canvas-container">
+                    <canvas id="future-canvas"></canvas>
+                    <div class="loading-spinner" id="future-loading"></div>
+                </div>
+            </div>
+
+            <!-- 量子育儿助手 -->
+            <div class="panel-section">
+                <h3><i class="fas fa-robot"></i> 育儿机器人指令</h3>
+                <div class="input-group">
+                    <input type="text" id="prompt" placeholder="输入育儿问题">
+                    <button id="advice-button"><i class="fas fa-lightbulb"></i> 生成建议</button>
+                </div>
+                <div id="ai-advice" class="output-box"></div>
+            </div>
         </div>
 
-        <!-- 量子育儿助手 -->
-        <div>
-            <h3>🤖 育儿机器人指令板</h3>
-            <input type="text" id="prompt" placeholder="输入育儿问题（如：吐奶怎么办）">
-            <button onclick="generateAdvice()">生成解决方案</button>
-            <div id="ai-advice" style="white-space: pre-wrap;"></div>
+        <!-- 隐藏彩蛋 -->
+        <div class="easter-egg">
+            <button onclick="launchMiniGame()"><i class="fas fa-gamepad"></i> 启动育儿模拟器 (BETA)</button>
         </div>
     </div>
 
-    <script>
-        // 全息投影初始化
-        const hologram = initHologram();
-        function initHologram() {
-            const scene = new THREE.Scene();
-            const camera = new THREE.PerspectiveCamera(75, 1, 0.1, 1000);
-            const renderer = new THREE.WebGLRenderer({ alpha: true });
-            renderer.setSize(300, 300);
-            document.getElementById('hologram').appendChild(renderer.domElement);
-
-            // 创建旋转的婴儿模型
-            const geometry = new THREE.TorusKnotGeometry(10, 3, 100, 16);
-            const material = new THREE.MeshPhongMaterial({ 
-                color: 0xff00ff,
-                wireframe: true 
-            });
-            const babyModel = new THREE.Mesh(geometry, material);
-            scene.add(babyModel);
-
-            camera.position.z = 30;
-            function animate() {
-                requestAnimationFrame(animate);
-                babyModel.rotation.x += 0.01;
-                babyModel.rotation.y += 0.01;
-                renderer.render(scene, camera);
-            }
-            animate();
-        }
-
-        // AI育儿建议生成（需接入实际API）
-        async function generateAdvice() {
-            const prompt = document.getElementById('prompt').value;
-            const response = await mockAIResponse(prompt);
-            document.getElementById('ai-advice').innerHTML = response;
-        }
-
-        function mockAIResponse(prompt) {
-            const answers = [
-                `💡量子解决方案：\n1. 使用反向安抚算法\n2. 启动奶瓶预热协议\n3. 播放白噪音频率：${Math.random()*200+50}Hz`,
-                `🚀时空优化建议：\n• 在第${Math.floor(Math.random()*60)}分钟进行换尿布操作\n• 最佳拍嗝角度：${Math.random()*30+135}度`
-            ];
-            return Promise.resolve(answers[Math.floor(Math.random()*answers.length)]);
-        }
-
-        // 哭声分析（伪代码示例）
-        async function startAudioAnalysis() {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            const audioContext = new AudioContext();
-            const analyzer = audioContext.createAnalyser();
-            const source = audioContext.createMediaStreamSource(stream);
-            source.connect(analyzer);
-            
-            const dataArray = new Uint8Array(analyzer.frequencyBinCount);
-            setInterval(() => {
-                analyzer.getByteFrequencyData(dataArray);
-                const avg = dataArray.reduce((a,b)=>a+b)/dataArray.length;
-                const diagnosis = avg > 128 ? '🤒需求级别：URGENT' : '😌情绪波动：NORMAL';
-                document.getElementById('diagnosis-result').innerHTML = 
-                    `📊声纹分析：${avg.toFixed(2)}dB\n${diagnosis}`;
-            }, 100);
-        }
-    </script>
-
-    <!-- 隐藏彩蛋 -->
-    <div style="position:fixed; bottom:10px; right:10px;">
-        <button onclick="launchMiniGame()">🕹️ 启动育儿模拟器（BETA）</button>
-    </div>
+    <script src="script.js"></script>
 </body>
 </html>
+<style>
+/* styles.css */
+:root {
+    --neon-pink: #ff00ff;
+    --cyber-blue: #00f7ff;
+    --dark-bg: #0a0a0a;
+    --panel-bg: #111;
+    --text-color: var(--neon-pink);
+    --accent-color: var(--cyber-blue);
+}
+
+body {
+    background: var(--dark-bg);
+    font-family: 'Courier New', monospace;
+    color: var(--text-color);
+    margin: 0;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+}
+
+.container {
+    display: flex;
+    width: 90%;
+    max-width: 1200px;
+    gap: 20px;
+}
+
+#hologram-container {
+    flex: 1;
+    height: 300px;
+    position: relative;
+    overflow: hidden;
+}
+
+#hologram {
+    width: 100%;
+    height: 100%;
+}
+
+.scanline {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--cyber-blue), transparent);
+    animation: scan 2s linear infinite;
+    opacity: 0.5;
+}
+
+@keyframes scan {
+    0% { transform: translateY(-100%); }
+    100% { transform: translateY(300%); }
+}
+
+.control-panel {
+    flex: 1;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    background: var(--panel-bg);
+}
+
+.panel-section {
+    padding: 15px 0;
+    border-bottom: 1px solid #222;
+}
+
+.panel-section:last-child {
+    border-bottom: none;
+}
+
+h1, h3 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    text-align: center;
+}
+
+button {
+    background: none;
+    color: var(--accent-color);
+    border: 2px solid var(--accent-color);
+    padding: 10px 15px;
+    font-family: 'Courier New', monospace;
+    cursor: pointer;
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+button:hover {
+    background-color: var(--accent-color);
+    color: var(--dark-bg);
+}
+
+.input-group {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+input {
+    flex: 1;
+    background: #222;
+    color: var(--text-color);
+    border: 1px solid #333;
+    padding: 10px;
+    font-family: 'Courier New', monospace;
+}
+
+.output-box {
+    background: #1a1a1a;
+    color: #ccc;
+    padding: 10px;
+    border: 1px solid #333;
+    white-space: pre-wrap;
+    font-size: 0.9em;
+}
+
+.canvas-container {
+    position: relative;
+    width: 100%;
+    height: 150px; /* 调整高度 */
+    border: 1px solid #333;
+    background: #000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+}
+
+#future-canvas {
+    width: 100%;
+    height: 100%;
+}
+
+.loading-spinner {
+    border: 4px solid rgba(0, 0, 0, 0.3);
+    border-top: 4px solid var(--accent-color);
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    animation: spin 1s linear infinite;
+    position: absolute;
+    display: none; /* 初始隐藏 */
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.easter-egg {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+}
+
+.easter-egg button {
+    padding: 8px 12px;
+    font-size: 0.8em;
+}
+
+/* 故障艺术效果 (可以根据需要调整) */
+.glitch-container {
+    position: relative;
+    animation: glitch 3s infinite;
+    display: inline-block; /* 防止影响父元素布局 */
+}
+@keyframes glitch {
+    0% { text-shadow: 0.05em 0 0 var(--neon-pink), -0.03em -0.04em 0 var(--cyber-blue); transform: none; }
+    25% { transform: translate(-0.04em, 0.02em); }
+    50% { text-shadow: -0.05em 0 0 var(--neon-pink), 0.03em 0.04em 0 var(--cyber-blue); transform: none; }
+    75% { transform: translate(0.03em, -0.02em); }
+    100% { text-shadow: 0.05em 0 0 var(--neon-pink), -0.03em -0.04em 0 var(--cyber-blue); transform: none; }
+}
+
+.cyber-border {
+    border: 3px solid var(--neon-pink);
+    box-shadow: 0 0 20px var(--cyber-blue);
+    position: relative;
+}
+.cyber-border::after {
+    content: '';
+    position: absolute;
+    top: -5px;
+    left: -5px;
+    right: -5px;
+    bottom: -5px;
+    border: 2px solid var(--cyber-blue);
+    z-index: -1;
+}
+</style>
+<script>
+// script.js
+document.addEventListener('DOMContentLoaded', () => {
+    initHologram();
+
+    const audioButton = document.getElementById('audio-button');
+    if (audioButton) {
+        audioButton.addEventListener('click', startAudioAnalysis);
+    }
+
+    const adviceButton = document.getElementById('advice-button');
+    if (adviceButton) {
+        adviceButton.addEventListener('click', generateAdvice);
+    }
+
+    const futureButton = document.getElementById('future-button');
+    if (futureButton) {
+        futureButton.addEventListener('click', predictFuture); // 需要实现 predictFuture 函数
+    }
+});
+
+// 全息投影初始化
+function initHologram() {
+    const hologramContainer = document.getElementById('hologram');
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, hologramContainer.offsetWidth / hologramContainer.offsetHeight, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer({ alpha: true });
+    renderer.setSize(hologramContainer.offsetWidth, hologramContainer.offsetHeight);
+    hologramContainer.appendChild(renderer.domElement);
+
+    const geometry = new THREE.TorusKnotGeometry(10, 3, 100, 16);
+    const material = new THREE.MeshPhongMaterial({
+        color: 0xff00ff,
+        wireframe: true,
+        emissive: 0x330033 // 添加自发光
+    });
+    const babyModel = new THREE.Mesh(geometry, material);
+    scene.add(babyModel);
+
+    const ambientLight = new THREE.AmbientLight(0x222222);
+    scene.add(ambientLight);
+
+    const pointLight = new THREE.PointLight(0xffffff, 1);
+    pointLight.position.set(50, 50, 50);
+    scene.add(pointLight);
+
+    camera.position.z = 30;
+
+    function animate() {
+        requestAnimationFrame(animate);
+        babyModel.rotation.x += 0.01;
+        babyModel.rotation.y += 0.01;
+        renderer.render(scene, camera);
+    }
+    animate();
+
+    // 监听窗口缩放
+    window.addEventListener('resize', () => {
+        camera.aspect = hologramContainer.offsetWidth / hologramContainer.offsetHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(hologramContainer.offsetWidth, hologramContainer.offsetHeight);
+    });
+}
+
+// AI育儿建议生成（需接入实际API）
+async function generateAdvice() {
+    const prompt = document.getElementById('prompt').value;
+    const aiAdviceDiv = document.getElementById('ai-advice');
+    aiAdviceDiv.textContent = '🧠 Thinking...'; // 显示加载状态
+    const response = await mockAIResponse(prompt);
+    aiAdviceDiv.textContent = response;
+}
+
+function mockAIResponse(prompt) {
+    const answers = [
+        `💡量子解决方案：\n1. 使用反向安抚算法\n2. 启动奶瓶预热协议\n3. 播放白噪音频率：${Math.random()*200+50}Hz`,
+        `🚀时空优化建议：\n• 在第${Math.floor(Math.random()*60)}分钟进行换尿布操作\n• 最佳拍嗝角度：${Math.random()*30+135}度`
+    ];
+    return new Promise(resolve => setTimeout(() => resolve(answers[(Math.random() * answers.length) | 0]), 1000)); // 模拟延迟
+}
+
+// 哭声分析（伪代码示例）
+async function startAudioAnalysis() {
+    const diagnosisResultDiv = document.getElementById('diagnosis-result');
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const analyzer = audioContext.createAnalyser();
+        const source = audioContext.createMediaStreamSource(stream);
+        source.connect(analyzer);
+
+        const dataArray = new Uint8Array(analyzer.frequencyBinCount);
+        setInterval(() => {
+            analyzer.getByteFrequencyData(dataArray);
+            const avg = dataArray.reduce((a, b) => a + b) / dataArray.length;
+            const diagnosis = avg > 128 ? '🚨 需求级别：URGENT' : '😊 情绪波动：NORMAL';
+            diagnosisResultDiv.textContent = `📊 声纹分析：${avg.toFixed(2)}dB\n${diagnosis}`;
+        }, 100);
+    } catch (err) {
+        diagnosisResultDiv.textContent = `❌ 麦克风权限错误：${err.message}`;
+    }
+}
+
+// 元宇宙成长模拟器 (需要实现)
+async function predictFuture() {
+    const futureCanvasContainer = document.getElementById('future-canvas-container');
+    const futureCanvas = document.getElementById('future-canvas');
+    const loadingSpinner = document.getElementById('future-loading');
+    const ctx = futureCanvas.getContext('2d');
+
+    // 显示加载动画
+    loadingSpinner.style.display = 'block';
+    ctx.clearRect(0, 0, futureCanvas.width, futureCanvas.height);
+    ctx.fillStyle = '#333';
+    ctx.fillText('预测中...', futureCanvas.width / 2 - 30, futureCanvas.height / 2);
+
+    // 模拟 AI 预测延迟
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    // 隐藏加载动画
+    loadingSpinner.style.display = 'none';
+
+    // 模拟绘制未来形象 (这里可以替换为实际的 AI 模型调用和图像生成)
+    const futureImage = new Image();
+    futureImage.onload = () => {
+        futureCanvas.width = 200; // 设置固定大小
+        futureCanvas.height = 200;
+        const aspectRatio = futureImage.width / futureImage.height;
+        let width = futureCanvas.width;
+        let height = width / aspectRatio;
+        if (height > futureCanvas.height) {
+            height = futureCanvas.height;
+            width = height * aspectRatio;
+        }
+        const x = (futureCanvas.width - width) / 2;
+        const y = (futureCanvas.height - height) / 2;
+        ctx.drawImage(futureImage, x, y, width, height);
+    };
+    futureImage.src = 'future-baby-placeholder.png'; // 替换为实际生成的图片 URL
+}
+
+function launchMiniGame() {
+    alert('🕹️ 育儿模拟器启动！(功能未实现)');
+}
+</script>
